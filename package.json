@@ -1,0 +1,13 @@
+{
+  "name": "solar-assistant-scheduler",
+  "version": "1.0.0",
+  "description": "Automatic day/night mode switcher for Solar Assistant inverter",
+  "main": "apply-settings.js",
+  "scripts": {
+    "day": "node apply-settings.js day",
+    "night": "node apply-settings.js night"
+  },
+  "dependencies": {
+    "puppeteer": "^22.0.0"
+  }
+}
