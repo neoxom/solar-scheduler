@@ -1,7 +1,8 @@
 name: Solar Assistant Scheduler
 
-on:
-.github/workflows/solar-scheduler.yml    # Night mode (01:00 Madrid) — runs at both summer (UTC+2) and winter (UTC+1) times
+"on":
+  schedule:
+    # Night mode (01:00 Madrid) — runs at both summer (UTC+2) and winter (UTC+1) times
     - cron: '0 23 * * *'   # 01:00 Madrid summer (CEST = UTC+2)
     - cron: '0 0 * * *'    # 01:00 Madrid winter (CET = UTC+1)
     # Day mode (07:00 Madrid) — same DST coverage
