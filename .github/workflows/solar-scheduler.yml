@@ -1,0 +1,54 @@
+name: Solar Assistant Scheduler
+
+on:
+.github/workflows/solar-scheduler.yml    # Night mode (01:00 Madrid) — runs at both summer (UTC+2) and winter (UTC+1) times
+    - cron: '0 23 * * *'   # 01:00 Madrid summer (CEST = UTC+2)
+    - cron: '0 0 * * *'    # 01:00 Madrid winter (CET = UTC+1)
+    # Day mode (07:00 Madrid) — same DST coverage
+    - cron: '0 5 * * *'    # 07:00 Madrid summer (CEST = UTC+2)
+    - cron: '0 6 * * *'    # 07:00 Madrid winter (CET = UTC+1)
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Mode to apply (day / night / auto)'
+        required: false
+        default: 'auto'
+
+jobs:
+  apply-solar-mode:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Determine mode
+        id: mode
+        run: |
+          INPUT_MODE="${{ github.event.inputs.mode }}"
+          if [ "$INPUT_MODE" = "day" ] || [ "$INPUT_MODE" = "night" ]; then
+            echo "mode=$INPUT_MODE" >> $GITHUB_OUTPUT
+          else
+            MADRID_HOUR=$(TZ='Europe/Madrid' date +%-H)
+            echo "Madrid hour: $MADRID_HOUR"
+            if [ "$MADRID_HOUR" -ge 1 ] && [ "$MADRID_HOUR" -lt 7 ]; then
+              echo "mode=night" >> $GITHUB_OUTPUT
+            else
+              echo "mode=day" >> $GITHUB_OUTPUT
+            fi
+          fi
+
+      - name: Apply settings
+        env:
+          SA_URL: https://neoxom.eu.solar-assistant.io/power
+        run: node apply-settings.js ${{ steps.mode.outputs.mode }}
