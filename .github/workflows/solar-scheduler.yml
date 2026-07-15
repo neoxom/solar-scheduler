@@ -1,13 +1,11 @@
 name: Solar Assistant Scheduler
 
-"on":
+on:
   schedule:
-    # Night mode (01:00 Madrid) — runs at both summer (UTC+2) and winter (UTC+1) times
-    - cron: '0 23 * * *'   # 01:00 Madrid summer (CEST = UTC+2)
-    - cron: '0 0 * * *'    # 01:00 Madrid winter (CET = UTC+1)
-    # Day mode (07:00 Madrid) — same DST coverage
-    - cron: '0 5 * * *'    # 07:00 Madrid summer (CEST = UTC+2)
-    - cron: '0 6 * * *'    # 07:00 Madrid winter (CET = UTC+1)
+    # Night mode: 01:00 Madrid = 23:00 UTC summer (CEST=UTC+2)
+    - cron: '0 23 * * *'
+    # Day mode: 07:00 Madrid = 05:00 UTC summer (CEST=UTC+2)
+    - cron: '0 5 * * *'
   workflow_dispatch:
     inputs:
       mode:
@@ -18,7 +16,7 @@ name: Solar Assistant Scheduler
 jobs:
   apply-solar-mode:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
 
     steps:
       - name: Checkout
@@ -28,27 +26,31 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '22'
+          cache: 'npm'
 
       - name: Install dependencies
-        run: npm install
+        run: npm ci
+
+      - name: Install Chromium for Puppeteer
+        run: npx puppeteer browsers install chrome
 
       - name: Determine mode
         id: mode
         run: |
-          INPUT_MODE="${{ github.event.inputs.mode }}"
-          if [ "$INPUT_MODE" = "day" ] || [ "$INPUT_MODE" = "night" ]; then
-            echo "mode=$INPUT_MODE" >> $GITHUB_OUTPUT
+          INPUT="${{ github.event.inputs.mode }}"
+          if [ "$INPUT" = "day" ] || [ "$INPUT" = "night" ]; then
+            echo "mode=$INPUT" >> $GITHUB_OUTPUT
           else
-            MADRID_HOUR=$(TZ='Europe/Madrid' date +%-H)
-            echo "Madrid hour: $MADRID_HOUR"
-            if [ "$MADRID_HOUR" -ge 1 ] && [ "$MADRID_HOUR" -lt 7 ]; then
+            HOUR=$(TZ='Europe/Madrid' date +%-H)
+            echo "Madrid hour: $HOUR"
+            if [ "$HOUR" -ge 1 ] && [ "$HOUR" -lt 7 ]; then
               echo "mode=night" >> $GITHUB_OUTPUT
             else
               echo "mode=day" >> $GITHUB_OUTPUT
             fi
           fi
 
-      - name: Apply settings
+      - name: Apply solar mode
         env:
-          SA_URL: https://neoxom.eu.solar-assistant.io/power
+          SA_TOKEN: ${{ secrets.SA_TOKEN }}
         run: node apply-settings.js ${{ steps.mode.outputs.mode }}
